@@ -320,7 +320,10 @@ export default function FileTree({
 
   // dragstart는 각 항목에서 처리 (setData 보장), 나머지는 컨테이너에서 위임
   function handleDragStartItem(id: string) {
-    setDraggedId(id)
+    // dragstart 틱 안에서 setState로 동기 리렌더가 일어나면(소스 opacity 변경·
+    // 루트 드롭존 삽입) Chrome이 드래그 이미지 캡처 직후 드래그를 즉시 취소한다.
+    // 시각 상태 변경을 다음 틱으로 미뤄 드래그 시작을 보장한다. (setData는 이미 동기 처리됨)
+    setTimeout(() => setDraggedId(id), 0)
   }
 
   function handleDragOver(e: React.DragEvent) {
