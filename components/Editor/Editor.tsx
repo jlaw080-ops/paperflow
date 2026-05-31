@@ -17,6 +17,7 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
   const [mode, setMode] = useState<'edit' | 'preview'>('edit')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   // 문서가 바뀌면 상태 초기화
   useEffect(() => {
@@ -36,6 +37,19 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
   }
 
   const viewUrl = slug ? `/view/${slug}` : null
+
+  async function handleCopyLink() {
+    if (!viewUrl) return
+    const fullUrl = `${window.location.origin}${viewUrl}`
+    try {
+      await navigator.clipboard.writeText(fullUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // 클립보드 권한 거부·비보안 컨텍스트 폴백: 직접 복사할 수 있게 표시
+      window.prompt('아래 링크를 복사하세요:', fullUrl)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -105,15 +119,28 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
           placeholder="url-slug"
         />
         {viewUrl && (
-          <a
-            href={viewUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="underline hover:opacity-75"
-            style={{ color: 'var(--accent)' }}
-          >
-            열기 ↗
-          </a>
+          <>
+            <button
+              onClick={handleCopyLink}
+              className="px-2 py-0.5 rounded-md transition-colors shrink-0"
+              style={{
+                border: '1px solid var(--border)',
+                color: copied ? '#065F46' : 'var(--text-secondary)',
+                background: copied ? '#D1FAE5' : 'transparent',
+              }}
+            >
+              {copied ? '복사됨 ✓' : '링크 복사'}
+            </button>
+            <a
+              href={viewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:opacity-75 shrink-0"
+              style={{ color: 'var(--accent)' }}
+            >
+              열기 ↗
+            </a>
+          </>
         )}
       </div>
 
