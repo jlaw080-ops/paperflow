@@ -90,14 +90,6 @@ function TreeNodeItem({
       <div
         data-drag-id={node.id}
         data-drag-type={node.type}
-        draggable={!isRenaming}
-        onDragStart={e => {
-          e.stopPropagation()
-          // dataTransfer.setData는 Firefox를 포함한 모든 브라우저에서 drop을 활성화하는 필수 호출
-          e.dataTransfer.setData('text/plain', node.id)
-          e.dataTransfer.effectAllowed = 'move'
-          onDragStartItem(node.id)
-        }}
         className="group flex items-center gap-1 rounded-md cursor-pointer select-none transition-colors"
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
@@ -115,6 +107,34 @@ function TreeNodeItem({
         }}
         onClick={() => isFolder ? onToggle(node.id) : onSelect(node)}
       >
+        {/* 드래그 핸들 — row 전체가 아닌 이 요소에만 draggable을 달아야
+            click/drag 충돌 없이 안정적으로 드래그가 시작됩니다 */}
+        {!isRenaming && (
+          <span
+            draggable
+            onDragStart={e => {
+              e.stopPropagation()
+              e.dataTransfer.setData('text/plain', node.id)
+              e.dataTransfer.effectAllowed = 'move'
+              onDragStartItem(node.id)
+            }}
+            onClick={e => e.stopPropagation()}
+            title="드래그하여 이동"
+            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              cursor: 'grab',
+              color: 'var(--text-secondary)',
+              fontSize: '13px',
+              lineHeight: 1,
+              userSelect: 'none',
+              width: '14px',
+              textAlign: 'center',
+            }}
+          >
+            ⠿
+          </span>
+        )}
+
         <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)', width: '16px' }}>
           {isFolder ? (isExpanded ? '▾' : '▸') : '·'}
         </span>
