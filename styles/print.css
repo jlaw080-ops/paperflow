@@ -1,0 +1,52 @@
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  /* 화면 전용 UI 숨김 */
+  .no-print,
+  .app-sidebar,
+  .app-header,
+  .app-toolbar {
+    display: none !important;
+  }
+
+  /* 본문 너비 제한 해제 */
+  .markdown-view {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 요소 중간 분리 방지 */
+  table,
+  pre,
+  img,
+  figure,
+  blockquote {
+    break-inside: avoid;
+  }
+
+  /* 제목이 페이지 끝에 고아로 남지 않게 */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+  }
+
+  /* <!-- pagebreak --> → .page-break 변환 결과 */
+  .page-break {
+    break-before: page;
+  }
+
+  /* 링크는 인쇄 시 텍스트만 */
+  a::after {
+    content: none;
+  }
+
+  /* 코드 배경 인쇄 허용 */
+  pre,
+  code {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
