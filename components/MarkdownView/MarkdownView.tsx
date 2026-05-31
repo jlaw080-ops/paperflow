@@ -43,9 +43,10 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
           style={{
             fontSize: '1.75rem',
             fontWeight: 700,
+            color: '#1e40af',
             marginBottom: '2rem',
             paddingBottom: '0.75rem',
-            borderBottom: '1px solid var(--border)',
+            borderBottom: '2px solid #1e40af',
           }}
         >
           {title}
@@ -65,9 +66,9 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
       </div>
 
       <style>{`
-        .prose-content h1 { font-size: 1.75rem; font-weight: 700; margin: 2rem 0 1rem; }
-        .prose-content h2 { font-size: 1.375rem; font-weight: 600; margin: 1.75rem 0 0.75rem; }
-        .prose-content h3 { font-size: 1.125rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+        .prose-content h1 { font-size: 1.75rem; font-weight: 700; color: #1e40af; margin: 2rem 0 1rem; }
+        .prose-content h2 { font-size: 1.375rem; font-weight: 600; color: #1e40af; border-left: 4px solid #1e40af; padding-left: 10px; margin: 1.75rem 0 0.75rem; }
+        .prose-content h3 { font-size: 1.125rem; font-weight: 600; color: #374151; margin: 1.5rem 0 0.5rem; }
         .prose-content p  { margin: 0 0 1rem; }
         .prose-content ul, .prose-content ol { margin: 0 0 1rem 1.5rem; }
         .prose-content li { margin-bottom: 0.25rem; }
@@ -104,7 +105,7 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
           padding: 0.5rem 0.75rem;
           text-align: left;
         }
-        .prose-content th { background: #F9FAFB; font-weight: 600; }
+        .prose-content th { background: #1e40af; color: #fff; font-weight: 600; }
         .prose-content a { color: var(--accent); text-decoration: underline; }
         .prose-content img { max-width: 100%; height: auto; }
         .prose-content hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }

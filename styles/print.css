@@ -1,7 +1,15 @@
 @media print {
   @page {
-    size: A4;
-    margin: 20mm;
+    size: A4 portrait;
+    margin: 20mm 18mm 22mm 18mm;
+    /* 페이지 번호 "현재 / 전체" — 마진 박스 지원 엔진(Firefox 등)에서 표시.
+       Chrome 인쇄-PDF는 마진 박스를 미지원하므로 인쇄 대화상자의
+       "머리글/바닥글" 옵션으로 페이지 번호가 표시된다. */
+    @bottom-center {
+      content: counter(page) " / " counter(pages);
+      font-size: 9pt;
+      color: #6b7280;
+    }
   }
 
   /* 화면 전용 UI 숨김 */
@@ -36,6 +44,52 @@
   /* <!-- pagebreak --> → .page-break 변환 결과 */
   .page-break {
     break-before: page;
+  }
+
+  /* ── 문서 본문 인쇄 양식 (markdown-to-print-html 스킬 규범 참고) ── */
+  .markdown-view {
+    font-size: 10.5pt;
+    line-height: 1.7;
+    color: #1f2937;
+  }
+
+  /* 제목 위계: 본문 강조색 #1e40af, 제목이 페이지 끝에 고아로 남지 않게 */
+  .markdown-view h1 {
+    font-size: 20pt !important;
+    font-weight: 700;
+    color: #1e40af !important;
+  }
+  .markdown-view h2 {
+    font-size: 15pt !important;
+    font-weight: 600;
+    color: #1e40af !important;
+  }
+  .markdown-view h3 {
+    font-size: 12.5pt !important;
+    font-weight: 600;
+    color: #374151 !important;
+  }
+
+  .markdown-view p,
+  .markdown-view li {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* 표: 헤더 배경을 인쇄에 강제 출력(브라우저 기본은 배경 제거) +
+     페이지 넘김 시 헤더 행 반복 + 행 중간 잘림 방지 */
+  .markdown-view thead {
+    display: table-header-group;
+  }
+  .markdown-view tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .markdown-view th {
+    background: #1e40af !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   /* 링크는 인쇄 시 텍스트만 */
