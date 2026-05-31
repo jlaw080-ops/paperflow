@@ -14,13 +14,15 @@
 - CRITICAL: 공개 보기 라우트(`/view/[slug]`)는 **읽기 전용**이다. 이 경로에 편집·삭제·쓰기 기능이나 소유자 전용 데이터를 절대 노출하지 말 것.
 - CRITICAL: 편집·삭제·쓰기 권한은 **Supabase RLS로 DB 차원에서 강제**한다. 앱 코드의 화면 숨김만으로 권한을 처리하지 말 것(우회 가능).
 - CRITICAL: **표준 마크다운(GFM, 표 포함)만** 렌더링한다. Obsidian 전용 문법(`[[위키링크]]`, `![[임베드]]`, 콜아웃)을 임의로 구현하지 말 것.
+- 예외: ` ```mermaid ` 코드블록은 다이어그램/플로우차트로 렌더한다(GitHub 방식). 클라이언트에서 SVG로 렌더하며 `securityLevel:'strict'` + raw HTML 비활성 유지(공개 뷰 XSS 방어). mermaid 외 다른 다이어그램 런타임은 임의 추가 금지.
 - CRITICAL: 인쇄용 CSS는 `styles/print.css`(`@media print`)에 격리한다. 인쇄 스타일이 화면 레이아웃을 깨뜨리지 말 것. (A4 분할 방식은 `docs/ARCHITECTURE.md` 참조)
 - 폴더/문서는 `documents` 한 테이블 + `parent_id` 트리로 표현한다. (스키마는 `docs/ARCHITECTURE.md`)
 - 전역 상태 라이브러리(Redux 등)를 추가하지 말 것. Server Component + `useState`로 충분하다.
 - CRITICAL: 사이드바 드래그앤드롭(`FileTree`)에서 `onDragStart` 중 **동기 `setState`로 드래그 소스의 스타일을 바꾸거나 DOM을 삽입/제거하지 말 것**. Chrome이 드래그 이미지 캡처 직후 드래그를 즉시 취소(dragstart→즉시 dragend)한다. 드래그 시각 상태 변경(opacity·드롭존 표시 등)은 `setTimeout(…, 0)`으로 다음 틱에 미룰 것. `setData`만 dragstart에서 동기 호출.
 
 ## 범위 규칙
-- CRITICAL: `docs/PRD.md`의 **MVP 제외 사항**에 있는 기능을 임의로 만들지 말 것(양방향 동기화, 협업/댓글/버전관리, 검색, 수식/다이어그램, 이미지 업로드 등). 필요해 보이면 먼저 사람에게 물을 것.
+- CRITICAL: `docs/PRD.md`의 **MVP 제외 사항**에 있는 기능을 임의로 만들지 말 것(양방향 동기화, 협업/댓글/버전관리, 검색, 수식, 이미지 업로드 등). 필요해 보이면 먼저 사람에게 물을 것.
+  - 범위 변경 이력: 다이어그램(mermaid)은 사용자 승인으로 MVP 범위에 편입됨(구현 완료).
 
 ## 개발 프로세스
 - CRITICAL: 새 기능 구현 시 **테스트를 먼저 작성**하고, 그 테스트가 통과하는 구현을 작성할 것 (TDD).
