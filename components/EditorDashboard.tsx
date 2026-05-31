@@ -85,6 +85,11 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
     setSelectedDoc(prev => prev ? { ...prev, ...updates } : null)
   }
 
+  async function handleMove(id: string, targetParentId: string | null) {
+    await supabase.from('documents').update({ parent_id: targetParentId }).eq('id', id)
+    await refresh()
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -146,6 +151,7 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
             onNewDoc={handleNewDoc}
             onRename={handleRename}
             onDelete={handleDelete}
+            onMove={handleMove}
           />
 
           {/* .md 가져오기 */}
