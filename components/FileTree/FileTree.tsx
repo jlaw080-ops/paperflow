@@ -90,7 +90,7 @@ function TreeNodeItem({
       <div
         data-drag-id={node.id}
         data-drag-type={node.type}
-        className="group flex items-center gap-1 rounded-md cursor-pointer select-none transition-colors"
+        className="group flex items-center gap-1 rounded-md transition-colors"
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
           paddingRight: '8px',
@@ -104,34 +104,36 @@ function TreeNodeItem({
           color: isSelected ? 'var(--accent)' : 'var(--text)',
           outline: isDragOver && isFolder ? '1px solid var(--accent)' : 'none',
           outlineOffset: '-1px',
+          cursor: 'pointer',
         }}
         onClick={() => isFolder ? onToggle(node.id) : onSelect(node)}
       >
-        {/* 드래그 핸들 — row 전체가 아닌 이 요소에만 draggable을 달아야
-            click/drag 충돌 없이 안정적으로 드래그가 시작됩니다 */}
+        {/* 드래그 핸들
+            - select-none을 row에서 제거: WebKit에서 user-select:none 상속이
+              하위 draggable 요소의 dragstart를 막는 버그 방지
+            - SVG 6-dot 아이콘: 플랫폼 무관하게 일관 렌더링
+            - 항상 표시(opacity 조건 없음): 사용자가 잡을 위치를 명확히 인지 */}
         {!isRenaming && (
           <span
             draggable
             onDragStart={e => {
-              e.stopPropagation()
               e.dataTransfer.setData('text/plain', node.id)
               e.dataTransfer.effectAllowed = 'move'
               onDragStartItem(node.id)
             }}
             onClick={e => e.stopPropagation()}
             title="드래그하여 이동"
-            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-            style={{
-              cursor: 'grab',
-              color: 'var(--text-secondary)',
-              fontSize: '13px',
-              lineHeight: 1,
-              userSelect: 'none',
-              width: '14px',
-              textAlign: 'center',
-            }}
+            className="shrink-0"
+            style={{ cursor: 'grab', color: '#D1D5DB', display: 'flex', alignItems: 'center' }}
           >
-            ⠿
+            <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+              <circle cx="2" cy="2" r="1.5"/>
+              <circle cx="6" cy="2" r="1.5"/>
+              <circle cx="2" cy="6" r="1.5"/>
+              <circle cx="6" cy="6" r="1.5"/>
+              <circle cx="2" cy="10" r="1.5"/>
+              <circle cx="6" cy="10" r="1.5"/>
+            </svg>
           </span>
         )}
 
