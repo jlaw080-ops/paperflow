@@ -21,7 +21,6 @@ interface TreeNode extends Document {
 function buildTree(docs: Document[]): TreeNode[] {
   const map = new Map<string, TreeNode>()
   const roots: TreeNode[] = []
-
   docs.forEach(doc => map.set(doc.id, { ...doc, children: [] }))
   docs.forEach(doc => {
     const node = map.get(doc.id)!
@@ -31,7 +30,6 @@ function buildTree(docs: Document[]): TreeNode[] {
       roots.push(node)
     }
   })
-
   const sort = (nodes: TreeNode[]) => {
     nodes.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title))
     nodes.forEach(n => sort(n.children))
@@ -45,23 +43,13 @@ function collectDescendantIds(id: string, docs: Document[]): Set<string> {
   const queue = [id]
   while (queue.length > 0) {
     const cur = queue.shift()!
-    docs.forEach(d => {
-      if (d.parent_id === cur) { result.add(d.id); queue.push(d.id) }
-    })
+    docs.forEach(d => { if (d.parent_id === cur) { result.add(d.id); queue.push(d.id) } })
   }
   return result
 }
 
-// 드래그 이벤트에서 가장 가까운 [data-drag-id] 요소 찾기
-function getDragTarget(e: React.DragEvent): { id: string; type: string } | null {
-  const el = (e.target as HTMLElement).closest('[data-drag-id]') as HTMLElement | null
-  if (!el) return null
-  return { id: el.dataset.dragId!, type: el.dataset.dragType ?? '' }
-}
+// ── TreeNodeItem ───────────────────────────────────────
 
-// ────────────────────────────────────────────
-// TreeNodeItem
-// ────────────────────────────────────────────
 interface TreeNodeProps {
   node: TreeNode
   depth: number
@@ -80,6 +68,7 @@ interface TreeNodeProps {
   onRenameChange: (v: string) => void
   onDelete: (id: string) => void
   onStartMove: (id: string, title: string) => void
+  onDragStartItem: (id: string) => void
 }
 
 function TreeNodeItem({
@@ -87,6 +76,7 @@ function TreeNodeItem({
   draggedId, dragOverId,
   onSelect, onToggle, onNewFolder, onNewDoc,
   onStartRename, onFinishRename, onRenameChange, onDelete, onStartMove,
+  onDragStartItem,
 }: TreeNodeProps) {
   const isFolder = node.type === 'folder'
   const isExpanded = expandedIds.has(node.id)
@@ -96,11 +86,18 @@ function TreeNodeItem({
   const isDragOver = dragOverId === node.id && !isDragging
 
   return (
-    <div style={{ opacity: isDragging ? 0.4 : 1 }}>
+    <div style={{ opacity: isDragging ? 0.35 : 1 }}>
       <div
         data-drag-id={node.id}
         data-drag-type={node.type}
         draggable={!isRenaming}
+        onDragStart={e => {
+          e.stopPropagation()
+          // dataTransfer.setData는 Firefox를 포함한 모든 브라우저에서 drop을 활성화하는 필수 호출
+          e.dataTransfer.setData('text/plain', node.id)
+          e.dataTransfer.effectAllowed = 'move'
+          onDragStartItem(node.id)
+        }}
         className="group flex items-center gap-1 rounded-md cursor-pointer select-none transition-colors"
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
@@ -118,12 +115,10 @@ function TreeNodeItem({
         }}
         onClick={() => isFolder ? onToggle(node.id) : onSelect(node)}
       >
-        {/* 아이콘 */}
         <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)', width: '16px' }}>
           {isFolder ? (isExpanded ? '▾' : '▸') : '·'}
         </span>
 
-        {/* 제목 / 이름변경 입력 */}
         {isRenaming ? (
           <input
             autoFocus
@@ -147,7 +142,6 @@ function TreeNodeItem({
           </span>
         )}
 
-        {/* hover 액션 */}
         {!isRenaming && (
           <span className="hidden group-hover:flex items-center gap-0.5 shrink-0">
             {isFolder && (
@@ -185,7 +179,6 @@ function TreeNodeItem({
         )}
       </div>
 
-      {/* 자식 */}
       {isFolder && isExpanded && (
         <div>
           {node.children.map(child => (
@@ -208,6 +201,7 @@ function TreeNodeItem({
               onRenameChange={onRenameChange}
               onDelete={onDelete}
               onStartMove={onStartMove}
+              onDragStartItem={onDragStartItem}
             />
           ))}
         </div>
@@ -216,9 +210,8 @@ function TreeNodeItem({
   )
 }
 
-// ────────────────────────────────────────────
-// 클릭 이동 모달 (↗ 버튼 fallback)
-// ────────────────────────────────────────────
+// ── 클릭 이동 모달 ────────────────────────────────────
+
 interface MoveModalProps {
   movingTitle: string
   folders: Document[]
@@ -230,7 +223,6 @@ interface MoveModalProps {
 
 function MoveModal({ movingTitle, folders, excludedIds, currentParentId, onConfirm, onCancel }: MoveModalProps) {
   const validFolders = folders.filter(f => !excludedIds.has(f.id))
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center"
@@ -254,11 +246,8 @@ function MoveModal({ movingTitle, folders, excludedIds, currentParentId, onConfi
             onClick={() => onConfirm(null)}
             disabled={currentParentId === null}
           >
-            <span>📂</span>
-            <span>최상위 (루트)</span>
-            {currentParentId === null && (
-              <span className="ml-auto text-xs" style={{ color: 'var(--text-secondary)' }}>현재 위치</span>
-            )}
+            <span>📂</span><span>최상위 (루트)</span>
+            {currentParentId === null && <span className="ml-auto text-xs" style={{ color: 'var(--text-secondary)' }}>현재 위치</span>}
           </button>
           {validFolders.length === 0 && (
             <p className="px-4 py-2 text-xs" style={{ color: 'var(--text-secondary)' }}>이동 가능한 폴더 없음</p>
@@ -274,9 +263,7 @@ function MoveModal({ movingTitle, folders, excludedIds, currentParentId, onConfi
               >
                 <span>📁</span>
                 <span className="truncate">{folder.title}</span>
-                {isCurrent && (
-                  <span className="ml-auto text-xs shrink-0" style={{ color: 'var(--text-secondary)' }}>현재 위치</span>
-                )}
+                {isCurrent && <span className="ml-auto text-xs shrink-0" style={{ color: 'var(--text-secondary)' }}>현재 위치</span>}
               </button>
             )
           })}
@@ -293,9 +280,8 @@ function MoveModal({ movingTitle, folders, excludedIds, currentParentId, onConfi
   )
 }
 
-// ────────────────────────────────────────────
-// FileTree (root)
-// ────────────────────────────────────────────
+// ── FileTree (root) ───────────────────────────────────
+
 export default function FileTree({
   documents, selectedId,
   onSelect, onNewFolder, onNewDoc, onRename, onDelete, onMove,
@@ -305,98 +291,90 @@ export default function FileTree({
   const [renameValue, setRenameValue] = useState('')
   const [movingItem, setMovingItem] = useState<{ id: string; title: string } | null>(null)
 
-  // 드래그 상태
-  const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [dragOverId, setDragOverId] = useState<string | null>(null)
+  // 드래그 상태: stale closure 방지를 위해 ref와 state 병행
+  const [draggedId, setDraggedId_] = useState<string | null>(null)
+  const [dragOverId, setDragOverId_] = useState<string | null>(null)
+  const draggedIdRef = useRef<string | null>(null)
+  const dragOverIdRef = useRef<string | null>(null)
   const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  function setDraggedId(id: string | null) { draggedIdRef.current = id; setDraggedId_(id) }
+  function setDragOverId(id: string | null) { dragOverIdRef.current = id; setDragOverId_(id) }
+  function clearTimer() {
+    if (expandTimerRef.current) { clearTimeout(expandTimerRef.current); expandTimerRef.current = null }
+  }
 
   const tree = buildTree(documents)
   const folders = documents.filter(d => d.type === 'folder')
 
-  // ── 트리 기본 동작 ──────────────────────────
-
   function toggleFolder(id: string) {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
+    setExpandedIds(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next })
   }
-
-  function startRename(id: string, title: string) {
-    setRenamingId(id); setRenameValue(title)
-  }
-
-  function finishRename(id: string) {
-    if (renameValue.trim()) onRename(id, renameValue.trim())
-    setRenamingId(null)
-  }
-
+  function startRename(id: string, title: string) { setRenamingId(id); setRenameValue(title) }
+  function finishRename(id: string) { if (renameValue.trim()) onRename(id, renameValue.trim()); setRenamingId(null) }
   function handleMoveConfirm(targetParentId: string | null) {
     if (movingItem) { onMove(movingItem.id, targetParentId); setMovingItem(null) }
   }
 
-  // ── 드래그 이벤트 (컨테이너 레벨 위임) ─────
-
-  function clearExpandTimer() {
-    if (expandTimerRef.current) { clearTimeout(expandTimerRef.current); expandTimerRef.current = null }
-  }
-
-  function handleDragStart(e: React.DragEvent) {
-    const target = getDragTarget(e)
-    if (!target || target.id === '__root__') return
-    setDraggedId(target.id)
-    e.dataTransfer.effectAllowed = 'move'
+  // dragstart는 각 항목에서 처리 (setData 보장), 나머지는 컨테이너에서 위임
+  function handleDragStartItem(id: string) {
+    setDraggedId(id)
   }
 
   function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
 
-    const target = getDragTarget(e)
-    const id = target?.id ?? '__root__'
+    const el = (e.target as HTMLElement).closest('[data-drag-id]') as HTMLElement | null
+    const id = el?.dataset.dragId ?? '__root__'
+    const type = el?.dataset.dragType ?? ''
 
-    if (id === dragOverId) return  // 변화 없으면 skip
+    if (id === dragOverIdRef.current) return  // 변화 없으면 불필요한 setState 생략
+
     setDragOverId(id)
-    clearExpandTimer()
+    clearTimer()
 
-    // 폴더 위에 700ms 머물면 자동 펼침
-    if (id && id !== '__root__' && target?.type === 'folder' && !expandedIds.has(id)) {
+    // 폴더 위에서 700ms 대기하면 자동 펼침
+    if (id !== '__root__' && type === 'folder' && !expandedIds.has(id)) {
+      const captured = id
       expandTimerRef.current = setTimeout(() => {
-        setExpandedIds(prev => new Set([...prev, id]))
+        setExpandedIds(prev => new Set([...prev, captured]))
       }, 700)
     }
   }
 
   function handleDragLeave(e: React.DragEvent) {
-    // 컨테이너를 완전히 벗어날 때만 초기화
+    // 컨테이너를 완전히 벗어날 때만 초기화 (자식 사이 이동 시 불필요한 초기화 방지)
     if (!containerRef.current?.contains(e.relatedTarget as Node)) {
       setDragOverId(null)
-      clearExpandTimer()
+      clearTimer()
     }
   }
 
   function handleDragEnd() {
     setDraggedId(null)
     setDragOverId(null)
-    clearExpandTimer()
+    clearTimer()
   }
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault()
-    const target = getDragTarget(e)
-    const id = draggedId
+
+    // dataTransfer.getData 우선, ref로 fallback (stale closure 방지)
+    const id = e.dataTransfer.getData('text/plain') || draggedIdRef.current
+
+    const el = (e.target as HTMLElement).closest('[data-drag-id]') as HTMLElement | null
+    const rawTargetId = el?.dataset.dragId ?? null
+    const targetType = el?.dataset.dragType ?? null
+    // '__root__' 드롭존 또는 빈 공간 → 최상위 이동
+    const targetId = (!rawTargetId || rawTargetId === '__root__') ? null : rawTargetId
 
     setDraggedId(null)
     setDragOverId(null)
-    clearExpandTimer()
+    clearTimer()
 
     if (!id) return
-
-    const targetId = (target?.id === '__root__' || !target) ? null : target.id
-    const targetType = target?.type ?? null
-
     if (targetId === id) return  // 자기 자신에 드롭
 
     const excluded = collectDescendantIds(id, documents)
@@ -404,12 +382,13 @@ export default function FileTree({
 
     let newParentId: string | null
     if (!targetId) {
-      newParentId = null                                          // 루트 드롭존 or 빈 공간
+      newParentId = null                                         // 루트로 이동
     } else if (targetType === 'folder') {
-      newParentId = targetId                                      // 폴더 안으로 이동
+      newParentId = targetId                                     // 폴더 안으로 이동
     } else {
+      // 문서에 드롭 → 해당 문서와 같은 부모 위치로 이동
       const targetDoc = documents.find(d => d.id === targetId)
-      newParentId = targetDoc?.parent_id ?? null                  // 문서와 같은 위치로
+      newParentId = targetDoc?.parent_id ?? null
     }
 
     onMove(id, newParentId)
@@ -423,33 +402,29 @@ export default function FileTree({
       <div
         ref={containerRef}
         className="py-2 overflow-y-auto flex-1"
-        onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDragEnd={handleDragEnd}
         onDrop={handleDrop}
       >
-        {/* 루트 드롭존 — 드래그 중에만 표시 */}
+        {/* 드래그 중에만 루트 드롭존 표시 */}
         {draggedId && (
           <div
             data-drag-id="__root__"
             data-drag-type="root"
-            className="mx-2 mb-1 rounded-md border-dashed border text-xs text-center py-1.5 transition-colors pointer-events-none"
+            className="mx-2 mb-1 rounded-md border-dashed border text-xs text-center py-1.5 transition-colors"
             style={{
               borderColor: dragOverId === '__root__' ? 'var(--accent)' : 'var(--border)',
               background: dragOverId === '__root__' ? 'var(--accent-light)' : 'transparent',
               color: dragOverId === '__root__' ? 'var(--accent)' : 'var(--text-secondary)',
-              pointerEvents: 'none',  // 실제 drop은 부모 컨테이너에서 처리
             }}
           >
-            최상위(루트)로 이동
+            여기에 놓으면 최상위로 이동
           </div>
         )}
 
         {tree.length === 0 && !draggedId && (
-          <p className="text-xs px-4 py-2" style={{ color: 'var(--text-secondary)' }}>
-            문서가 없습니다.
-          </p>
+          <p className="text-xs px-4 py-2" style={{ color: 'var(--text-secondary)' }}>문서가 없습니다.</p>
         )}
 
         {tree.map(node => (
@@ -472,6 +447,7 @@ export default function FileTree({
             onRenameChange={setRenameValue}
             onDelete={onDelete}
             onStartMove={(id, title) => setMovingItem({ id, title })}
+            onDragStartItem={handleDragStartItem}
           />
         ))}
       </div>
