@@ -90,6 +90,12 @@ function TreeNodeItem({
       <div
         data-drag-id={node.id}
         data-drag-type={node.type}
+        draggable={!isRenaming}
+        onDragStart={e => {
+          e.dataTransfer.setData('text/plain', node.id)
+          e.dataTransfer.effectAllowed = 'move'
+          onDragStartItem(node.id)
+        }}
         className="group flex items-center gap-1 rounded-md transition-colors"
         style={{
           paddingLeft: `${depth * 16 + 8}px`,
@@ -104,40 +110,13 @@ function TreeNodeItem({
           color: isSelected ? 'var(--accent)' : 'var(--text)',
           outline: isDragOver && isFolder ? '1px solid var(--accent)' : 'none',
           outlineOffset: '-1px',
-          cursor: 'pointer',
+          cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
         }}
         onClick={() => isFolder ? onToggle(node.id) : onSelect(node)}
       >
-        {/* 드래그 핸들
-            - select-none을 row에서 제거: WebKit에서 user-select:none 상속이
-              하위 draggable 요소의 dragstart를 막는 버그 방지
-            - SVG 6-dot 아이콘: 플랫폼 무관하게 일관 렌더링
-            - 항상 표시(opacity 조건 없음): 사용자가 잡을 위치를 명확히 인지 */}
-        {!isRenaming && (
-          <span
-            draggable
-            onDragStart={e => {
-              e.dataTransfer.setData('text/plain', node.id)
-              e.dataTransfer.effectAllowed = 'move'
-              onDragStartItem(node.id)
-            }}
-            onClick={e => e.stopPropagation()}
-            title="드래그하여 이동"
-            className="shrink-0"
-            style={{ cursor: 'grab', color: '#D1D5DB', display: 'flex', alignItems: 'center' }}
-          >
-            <svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
-              <circle cx="2" cy="2" r="1.5"/>
-              <circle cx="6" cy="2" r="1.5"/>
-              <circle cx="2" cy="6" r="1.5"/>
-              <circle cx="6" cy="6" r="1.5"/>
-              <circle cx="2" cy="10" r="1.5"/>
-              <circle cx="6" cy="10" r="1.5"/>
-            </svg>
-          </span>
-        )}
-
-        <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)', width: '16px' }}>
+        <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)', width: '16px', pointerEvents: 'none' }}>
           {isFolder ? (isExpanded ? '▾' : '▸') : '·'}
         </span>
 
