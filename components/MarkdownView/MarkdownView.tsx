@@ -3,6 +3,17 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Components } from 'react-markdown'
+import MermaidDiagram from './MermaidDiagram'
+
+// 코드블록의 텍스트 내용을 안전하게 추출 (children이 문자열/배열/엘리먼트 혼합일 수 있음)
+function extractText(node: unknown): string {
+  if (typeof node === 'string') return node
+  if (Array.isArray(node)) return node.map(extractText).join('')
+  if (node && typeof node === 'object' && 'props' in node) {
+    return extractText((node as { props?: { children?: unknown } }).props?.children)
+  }
+  return ''
+}
 
 interface MarkdownViewProps {
   content: string
@@ -20,6 +31,22 @@ const components: Components = {
   div: ({ className, children, ...props }: any) => (
     <div className={className} {...props}>{children}</div>
   ),
+  // ```mermaid 코드블록 → 다이어그램으로 렌더. 그 외 코드는 기본 <code> 유지.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  code: ({ node, className, children, ...props }: any) => {
+    if (/\blanguage-mermaid\b/.test(className || '')) {
+      return <MermaidDiagram code={extractText(children).replace(/\n$/, '')} />
+    }
+    return <code className={className} {...props}>{children}</code>
+  },
+  // mermaid 블록은 <pre> 래퍼를 제거 (<pre><figure> 잘못된 중첩 방지)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  pre: ({ node, children, ...props }: any) => {
+    const child = Array.isArray(children) ? children[0] : children
+    const cls = child?.props?.className || ''
+    if (/\blanguage-mermaid\b/.test(cls)) return <>{children}</>
+    return <pre {...props}>{children}</pre>
+  },
 }
 
 export default function MarkdownView({ content, title }: MarkdownViewProps) {
@@ -110,6 +137,10 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
         .prose-content img { max-width: 100%; height: auto; }
         .prose-content hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
         .prose-content .page-break { break-before: page; }
+        .prose-content .mermaid-figure { margin: 1.5rem 0; text-align: center; }
+        .prose-content .mermaid-figure svg { max-width: 100%; height: auto; }
+        .prose-content .mermaid-loading { color: var(--text-secondary); font-size: 0.875rem; padding: 1rem 0; }
+        .prose-content .mermaid-error { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; }
       `}</style>
     </article>
   )
