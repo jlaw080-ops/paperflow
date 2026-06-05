@@ -170,6 +170,7 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
             <Editor
               key={selectedDoc.id}
               document={selectedDoc}
+              userId={userId}
               onSave={handleSave}
               onDelete={handleDelete}
             />

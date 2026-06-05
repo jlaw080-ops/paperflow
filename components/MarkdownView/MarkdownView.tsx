@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
 import type { Components } from 'react-markdown'
 import MermaidDiagram from './MermaidDiagram'
 import TableOfContents from './TableOfContents'
@@ -121,7 +122,7 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
 
           <div className="prose-content">
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkBreaks]}
               components={allComponents}
               // raw HTML(page-break div) 허용
               allowedElements={undefined}

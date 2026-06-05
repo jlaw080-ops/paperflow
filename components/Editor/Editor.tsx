@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { Document } from '@/lib/types'
 import MarkdownView from '@/components/MarkdownView/MarkdownView'
+import { uploadImage, IMAGE_ACCEPT } from '@/lib/uploadImage'
 
 interface EditorProps {
   document: Document
+  userId: string
   onSave: (id: string, updates: { title: string; content: string; slug: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
-export default function Editor({ document, onSave, onDelete }: EditorProps) {
+export default function Editor({ document, userId, onSave, onDelete }: EditorProps) {
   const [title, setTitle] = useState(document.title)
   const [content, setContent] = useState(document.content ?? '')
   const [slug, setSlug] = useState(document.slug ?? '')
@@ -18,6 +20,10 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 문서가 바뀌면 상태 초기화
   useEffect(() => {
@@ -34,6 +40,59 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
     setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  // 현재 커서 위치에 텍스트를 삽입하고 커서를 삽입 끝으로 옮긴다(controlled textarea).
+  function insertAtCursor(text: string) {
+    const ta = textareaRef.current
+    if (!ta) {
+      setContent(c => c + text)
+      return
+    }
+    const start = ta.selectionStart
+    const end = ta.selectionEnd
+    setContent(c => c.slice(0, start) + text + c.slice(end))
+    requestAnimationFrame(() => {
+      ta.focus()
+      const pos = start + text.length
+      ta.setSelectionRange(pos, pos)
+    })
+  }
+
+  // 이미지 파일들을 업로드하고 표준 마크다운 ![alt](url) 로 본문에 삽입한다.
+  // 업로드 중에는 placeholder를 넣었다가 완료/실패 시 교체·제거한다.
+  async function handleImageFiles(files: File[]) {
+    const images = files.filter(f => f.type.startsWith('image/'))
+    if (images.length === 0) return
+    setUploadError(null)
+
+    for (const file of images) {
+      const placeholder = `![업로드 중…](uploading-${Date.now()}-${Math.random().toString(36).slice(2)})`
+      insertAtCursor(`${placeholder}\n`)
+      try {
+        const { url, alt } = await uploadImage(file, userId)
+        setContent(c => c.replace(placeholder, `![${alt}](${url})`))
+      } catch (e) {
+        setContent(c => c.replace(`${placeholder}\n`, '').replace(placeholder, ''))
+        setUploadError(e instanceof Error ? e.message : '이미지 업로드에 실패했습니다.')
+      }
+    }
+  }
+
+  function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.clipboardData.files)
+    if (files.some(f => f.type.startsWith('image/'))) {
+      e.preventDefault()
+      handleImageFiles(files)
+    }
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    const files = Array.from(e.dataTransfer.files)
+    if (files.some(f => f.type.startsWith('image/'))) {
+      e.preventDefault()
+      handleImageFiles(files)
+    }
   }
 
   const viewUrl = slug ? `/view/${slug}` : null
@@ -89,6 +148,16 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
           >
             미리보기
           </button>
+          {mode === 'edit' && (
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs px-2.5 py-1 rounded-md transition-colors"
+              style={{ color: 'var(--text-secondary)', border: '1px solid var(--border)' }}
+              title="이미지를 올려 본문에 삽입 (붙여넣기·드래그드롭도 가능)"
+            >
+              + 이미지
+            </button>
+          )}
         </div>
 
         <button
@@ -147,23 +216,43 @@ export default function Editor({ document, onSave, onDelete }: EditorProps) {
       {/* 편집 / 미리보기 영역 */}
       <div className="flex-1 overflow-auto">
         {mode === 'edit' ? (
-          <textarea
-            className="w-full h-full p-6 resize-none outline-none"
-            style={{
-              fontFamily: "'D2Coding', ui-monospace, monospace",
-              fontSize: '14px',
-              lineHeight: '1.7',
-              color: 'var(--text)',
-              background: 'var(--bg)',
-            }}
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            placeholder="마크다운을 입력하세요…&#10;&#10;<!-- pagebreak --> 를 넣으면 인쇄 시 새 페이지가 시작됩니다."
-            spellCheck={false}
-          />
+          <div className="flex flex-col h-full">
+            {uploadError && (
+              <p className="text-xs px-6 pt-2" style={{ color: '#B91C1C' }}>{uploadError}</p>
+            )}
+            <textarea
+              ref={textareaRef}
+              className="w-full flex-1 p-6 resize-none outline-none"
+              style={{
+                fontFamily: "'D2Coding', ui-monospace, monospace",
+                fontSize: '14px',
+                lineHeight: '1.7',
+                color: 'var(--text)',
+                background: 'var(--bg)',
+              }}
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              onPaste={handlePaste}
+              onDrop={handleDrop}
+              placeholder="마크다운을 입력하세요…&#10;&#10;이미지는 붙여넣기·드래그드롭하거나 위 + 이미지 버튼으로 올립니다.&#10;<!-- pagebreak --> 를 넣으면 인쇄 시 새 페이지가 시작됩니다."
+              spellCheck={false}
+            />
+          </div>
         ) : (
           <MarkdownView content={content} />
         )}
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={IMAGE_ACCEPT}
+          multiple
+          className="hidden"
+          onChange={e => {
+            if (e.target.files) handleImageFiles(Array.from(e.target.files))
+            e.target.value = ''
+          }}
+        />
       </div>
 
       {/* 위험 영역 */}
