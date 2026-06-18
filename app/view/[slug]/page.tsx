@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import MarkdownView from '@/components/MarkdownView/MarkdownView'
+import HtmlView from '@/components/HtmlView/HtmlView'
 import PrintButton from '@/components/PrintButton'
 import type { Document } from '@/lib/types'
 
@@ -58,7 +59,11 @@ export default async function ViewPage({ params }: PageProps) {
         <PrintButton />
       </div>
 
-      <MarkdownView content={document.content ?? ''} title={document.title} />
+      {document.format === 'html' ? (
+        <HtmlView html={document.content ?? ''} title={document.title} />
+      ) : (
+        <MarkdownView content={document.content ?? ''} title={document.title} />
+      )}
     </div>
   )
 }

@@ -4,9 +4,16 @@ PaperFlow 작업 기록. 최신 항목이 위에 옵니다.
 
 ## 2026-06-18
 
-본문 목차, 이미지 업로드, 단일 줄바꿈 렌더링 추가 및 인쇄 CSS 임포트 정리.
+본문 목차, 이미지 업로드, 단일 줄바꿈 렌더링 추가 및 인쇄 CSS 임포트 정리, HTML 문서 가져오기/렌더링.
 
 ### Added
+- **HTML 문서 가져오기·렌더링** (`002_add_format` 마이그레이션 + `components/HtmlView`)
+  - `.html`/`.htm`을 드래그앤드롭/버튼으로 가져오면 `documents.format='html'`로 저장(`ImportDropzone`). 기존 `.md`는 `format='markdown'`.
+  - 공개 보기/미리보기에서 format에 따라 분기: `markdown`은 기존 `MarkdownView`, `html`은 `HtmlView`로 렌더.
+  - **보안 2중 방어**(raw HTML을 푸는 대신): (1) `DOMPurify` sanitize(`<script>`·`on*`·`javascript:` 제거), (2) `sandbox="allow-same-origin"` iframe(스크립트 비활성)에 `srcdoc` 렌더 → JS 실행 원천 차단 + 리포트 자체 CSS를 앱과 격리. `allow-scripts` 미부여.
+  - DB 스키마: `format text NOT NULL DEFAULT 'markdown' CHECK (format IN ('markdown','html'))`. 기존 17개 행은 모두 `markdown`으로 채워져 하위 호환.
+  - 한계: iframe 내부 `@page`는 무시되고 외부 A4 인쇄 규칙이 적용됨. sandbox라 내부 스크립트는 동작하지 않음(의도된 제약).
+  - "표준 마크다운만 렌더" 규칙의 명시적 예외로 `CLAUDE.md` CRITICAL 갱신(사용자 승인).
 - **본문 연동 좌측 목차(TOC)** (`6449b15`)
   - 미리보기/열기 화면에 헤딩(h1~h3) 기반 동적 목차를 카드 형태로 표시.
   - 스크롤스파이로 현재 섹션 자동 하이라이트, 클릭 시 해당 헤딩으로 이동.

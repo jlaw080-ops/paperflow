@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Document } from '@/lib/types'
 import MarkdownView from '@/components/MarkdownView/MarkdownView'
+import HtmlView from '@/components/HtmlView/HtmlView'
 import { uploadImage, IMAGE_ACCEPT } from '@/lib/uploadImage'
 
 interface EditorProps {
@@ -24,6 +25,9 @@ export default function Editor({ document, userId, onSave, onDelete }: EditorPro
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // HTML 문서는 sanitize 후 sandbox iframe으로 렌더한다. 이미지 업로드(마크다운 문법 삽입)는 비적용.
+  const isHtml = document.format === 'html'
 
   // 문서가 바뀌면 상태 초기화
   useEffect(() => {
@@ -148,7 +152,7 @@ export default function Editor({ document, userId, onSave, onDelete }: EditorPro
           >
             미리보기
           </button>
-          {mode === 'edit' && (
+          {mode === 'edit' && !isHtml && (
             <button
               onClick={() => fileInputRef.current?.click()}
               className="text-xs px-2.5 py-1 rounded-md transition-colors"
@@ -232,12 +236,18 @@ export default function Editor({ document, userId, onSave, onDelete }: EditorPro
               }}
               value={content}
               onChange={e => setContent(e.target.value)}
-              onPaste={handlePaste}
-              onDrop={handleDrop}
-              placeholder="마크다운을 입력하세요…&#10;&#10;이미지는 붙여넣기·드래그드롭하거나 위 + 이미지 버튼으로 올립니다.&#10;<!-- pagebreak --> 를 넣으면 인쇄 시 새 페이지가 시작됩니다."
+              onPaste={isHtml ? undefined : handlePaste}
+              onDrop={isHtml ? undefined : handleDrop}
+              placeholder={
+                isHtml
+                  ? 'HTML 원본을 입력하세요…\n\n저장 시 공개 보기에서 sanitize 후 sandbox iframe으로 렌더됩니다.'
+                  : '마크다운을 입력하세요…\n\n이미지는 붙여넣기·드래그드롭하거나 위 + 이미지 버튼으로 올립니다.\n<!-- pagebreak --> 를 넣으면 인쇄 시 새 페이지가 시작됩니다.'
+              }
               spellCheck={false}
             />
           </div>
+        ) : isHtml ? (
+          <HtmlView html={content} title={title} />
         ) : (
           <MarkdownView content={content} />
         )}

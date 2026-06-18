@@ -16,9 +16,9 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
   const [error, setError] = useState<string | null>(null)
 
   async function processFiles(files: FileList) {
-    const mdFiles = Array.from(files).filter(f => f.name.endsWith('.md'))
-    if (mdFiles.length === 0) {
-      setError('.md 파일만 가져올 수 있습니다.')
+    const docFiles = Array.from(files).filter(f => /\.(md|markdown|html?|htm)$/i.test(f.name))
+    if (docFiles.length === 0) {
+      setError('.md 또는 .html 파일만 가져올 수 있습니다.')
       return
     }
 
@@ -27,9 +27,10 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
 
     const supabase = createClient()
     const results = await Promise.allSettled(
-      mdFiles.map(async (file, i) => {
+      docFiles.map(async (file, i) => {
         const content = await file.text()
-        const title = file.name.replace(/\.md$/, '')
+        const isHtml = /\.html?$/i.test(file.name)
+        const title = file.name.replace(/\.(md|markdown|html?|htm)$/i, '')
         const slug = `${title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9가-힣-]/g, '')}-${Date.now() + i}`
 
         const { error } = await supabase.from('documents').insert({
@@ -38,6 +39,7 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
           title,
           content,
           slug,
+          format: isHtml ? 'html' : 'markdown',
           sort_order: 999,
           owner_id: userId,
         })
@@ -72,7 +74,7 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
           color: dragging ? 'var(--accent)' : 'var(--text-secondary)',
         }}
       >
-        {importing ? '가져오는 중…' : '.md 파일 가져오기'}
+        {importing ? '가져오는 중…' : '.md · .html 파일 가져오기'}
       </div>
 
       {error && (
@@ -82,7 +84,7 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
       <input
         ref={inputRef}
         type="file"
-        accept=".md"
+        accept=".md,.markdown,.html,.htm"
         multiple
         className="hidden"
         onChange={e => e.target.files && processFiles(e.target.files)}
