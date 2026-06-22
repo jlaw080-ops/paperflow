@@ -1,7 +1,30 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useSyncExternalStore } from 'react'
 import type { Document } from '@/lib/types'
+
+// 좌측 트리 정렬 기준. 방향은 고정: 이름=오름차순(가나다/A→Z), 생성날짜=최신순.
+export type SortMode = 'name' | 'created'
+const SORT_STORAGE_KEY = 'paperflow.fileTreeSort'
+
+// localStorage 기반 정렬 기준 저장소.
+// useSyncExternalStore로 읽어 SSR 하이드레이션 불일치를 피한다(서버 스냅샷=기본값 'name').
+const sortListeners = new Set<() => void>()
+function readStoredSort(): SortMode {
+  try {
+    return localStorage.getItem(SORT_STORAGE_KEY) === 'created' ? 'created' : 'name'
+  } catch {
+    return 'name'
+  }
+}
+function writeStoredSort(mode: SortMode) {
+  try { localStorage.setItem(SORT_STORAGE_KEY, mode) } catch { /* private mode 등 무시 */ }
+  sortListeners.forEach(l => l())
+}
+function subscribeSort(cb: () => void) {
+  sortListeners.add(cb)
+  return () => { sortListeners.delete(cb) }
+}
 
 interface FileTreeProps {
   documents: Document[]
@@ -18,7 +41,19 @@ interface TreeNode extends Document {
   children: TreeNode[]
 }
 
-function buildTree(docs: Document[]): TreeNode[] {
+// 형제 노드 정렬 비교 함수 (순수 함수 — 폴더 우선 + 선택한 기준).
+// 1) 폴더를 파일보다 항상 위에 둔다.
+// 2) 같은 종류끼리는 기준에 따라 정렬: 이름=오름차순, 생성날짜=최신순(동률 시 이름).
+export function compareDocs(a: Document, b: Document, mode: SortMode): number {
+  if (a.type !== b.type) return a.type === 'folder' ? -1 : 1
+  if (mode === 'created') {
+    const byDate = b.created_at.localeCompare(a.created_at) // 최신순(내림차순)
+    if (byDate !== 0) return byDate
+  }
+  return a.title.localeCompare(b.title, 'ko', { numeric: true })
+}
+
+function buildTree(docs: Document[], mode: SortMode): TreeNode[] {
   const map = new Map<string, TreeNode>()
   const roots: TreeNode[] = []
   docs.forEach(doc => map.set(doc.id, { ...doc, children: [] }))
@@ -31,7 +66,7 @@ function buildTree(docs: Document[]): TreeNode[] {
     }
   })
   const sort = (nodes: TreeNode[]) => {
-    nodes.sort((a, b) => a.sort_order - b.sort_order || a.title.localeCompare(b.title))
+    nodes.sort((a, b) => compareDocs(a, b, mode))
     nodes.forEach(n => sort(n.children))
     return nodes
   }
@@ -292,6 +327,9 @@ export default function FileTree({
   const [renameValue, setRenameValue] = useState('')
   const [movingItem, setMovingItem] = useState<{ id: string; title: string } | null>(null)
 
+  // 정렬 기준: 서버/첫 렌더는 'name', 클라이언트에서 localStorage 값으로 동기화.
+  const sortMode = useSyncExternalStore<SortMode>(subscribeSort, readStoredSort, () => 'name')
+
   // 드래그 상태: stale closure 방지를 위해 ref와 state 병행
   const [draggedId, setDraggedId_] = useState<string | null>(null)
   const [dragOverId, setDragOverId_] = useState<string | null>(null)
@@ -306,7 +344,7 @@ export default function FileTree({
     if (expandTimerRef.current) { clearTimeout(expandTimerRef.current); expandTimerRef.current = null }
   }
 
-  const tree = buildTree(documents)
+  const tree = buildTree(documents, sortMode)
   const folders = documents.filter(d => d.type === 'folder')
 
   function toggleFolder(id: string) {
@@ -403,6 +441,36 @@ export default function FileTree({
 
   return (
     <>
+      {/* 정렬 컨트롤 */}
+      <div
+        className="flex items-center gap-1 px-3 py-1.5 border-b shrink-0"
+        style={{ borderColor: 'var(--border)' }}
+      >
+        <span className="text-xs shrink-0" style={{ color: 'var(--text-secondary)' }}>정렬</span>
+        <span className="flex-1" />
+        {([
+          { mode: 'name' as const, label: '이름' },
+          { mode: 'created' as const, label: '생성순' },
+        ]).map(({ mode, label }) => {
+          const active = sortMode === mode
+          return (
+            <button
+              key={mode}
+              onClick={() => writeStoredSort(mode)}
+              title={mode === 'name' ? '이름 오름차순 (가나다·A→Z)' : '생성 날짜 최신순'}
+              className="text-xs px-2 py-0.5 rounded-md transition-colors"
+              style={{
+                background: active ? 'var(--accent-light)' : 'transparent',
+                color: active ? 'var(--accent)' : 'var(--text-secondary)',
+                border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+              }}
+            >
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
       <div
         ref={containerRef}
         className="py-2 overflow-y-auto flex-1"
