@@ -151,8 +151,11 @@ function TreeNodeItem({
         }}
         onClick={() => isFolder ? onToggle(node.id) : onSelect(node)}
       >
-        <span className="text-sm shrink-0" style={{ color: 'var(--text-secondary)', width: '16px', pointerEvents: 'none' }}>
-          {isFolder ? (isExpanded ? '▾' : '▸') : '·'}
+        <span
+          className="text-sm shrink-0"
+          style={{ width: '18px', textAlign: 'center', pointerEvents: 'none' }}
+        >
+          {isFolder ? (isExpanded ? '📂' : '📁') : '📄'}
         </span>
 
         {isRenaming ? (
@@ -171,7 +174,7 @@ function TreeNodeItem({
           />
         ) : (
           <span
-            className="flex-1 text-sm truncate"
+            className={`flex-1 text-sm truncate ${isFolder ? 'font-semibold' : 'font-normal'}`}
             onDoubleClick={e => { e.stopPropagation(); onStartRename(node.id, node.title) }}
           >
             {node.title}
