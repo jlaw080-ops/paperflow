@@ -139,8 +139,17 @@ export default function MarkdownView({ content, title }: MarkdownViewProps) {
         .prose-content h2 { font-size: 1.375rem; font-weight: 600; color: #1e40af; border-left: 4px solid #1e40af; padding-left: 10px; margin: 1.75rem 0 0.75rem; }
         .prose-content h3 { font-size: 1.125rem; font-weight: 600; color: #374151; margin: 1.5rem 0 0.5rem; }
         .prose-content p  { margin: 0 0 1rem; }
-        .prose-content ul, .prose-content ol { margin: 0 0 1rem 1.5rem; }
+        /* Tailwind preflight가 ul/ol의 list-style·padding을 제거하므로 마커·들여쓰기를 복원 */
+        .prose-content ul, .prose-content ol { margin: 0 0 1rem; padding-left: 1.5rem; }
+        .prose-content ul { list-style: disc; }
+        .prose-content ul ul { list-style: circle; }
+        .prose-content ul ul ul { list-style: square; }
+        .prose-content ol { list-style: decimal; }
         .prose-content li { margin-bottom: 0.25rem; }
+        .prose-content li > ul, .prose-content li > ol { margin: 0.25rem 0 0; }
+        /* GFM 체크박스 항목은 불릿 없이 체크박스만 표시 */
+        .prose-content li.task-list-item { list-style: none; }
+        .prose-content ul.contains-task-list { padding-left: 0.5rem; }
         .prose-content blockquote {
           border-left: 3px solid var(--border);
           padding-left: 1rem;
