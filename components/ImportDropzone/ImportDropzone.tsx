@@ -4,12 +4,11 @@ import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 interface ImportDropzoneProps {
-  userId: string
   parentId: string | null
   onImported: () => void
 }
 
-export default function ImportDropzone({ userId, parentId, onImported }: ImportDropzoneProps) {
+export default function ImportDropzone({ parentId, onImported }: ImportDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -41,7 +40,6 @@ export default function ImportDropzone({ userId, parentId, onImported }: ImportD
           slug,
           format: isHtml ? 'html' : 'markdown',
           sort_order: 999,
-          owner_id: userId,
         })
         if (error) throw error
       })

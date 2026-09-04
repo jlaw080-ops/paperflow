@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
 
-// 버킷 차원에서도 동일하게 강제됨(마이그레이션 document_images_storage 참조).
 const BUCKET = 'document-images'
 const MAX_BYTES = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
@@ -23,12 +22,9 @@ export function sanitizeImageName(name: string): string {
   return `${base}.${ext}`
 }
 
-/**
- * 소유자별 폴더로 격리된 스토리지 경로.
- * RLS가 첫 폴더 = auth.uid() 를 강제하므로 userId를 맨 앞에 둔다.
- */
-export function buildImagePath(userId: string, fileName: string, now: number): string {
-  return `${userId}/${now}-${sanitizeImageName(fileName)}`
+/** 스토리지 경로. 로그인이 없어 소유자 폴더 구분 없이 평면 경로를 쓴다. */
+export function buildImagePath(fileName: string, now: number): string {
+  return `${now}-${sanitizeImageName(fileName)}`
 }
 
 /** 허용 타입/크기 위반 시 사용자용 한국어 메시지, 통과 시 null. */
@@ -48,12 +44,12 @@ export interface UploadedImage {
 }
 
 /** 이미지를 Storage에 올리고 공개 URL과 기본 alt를 반환한다. 실패 시 throw. */
-export async function uploadImage(file: File, userId: string): Promise<UploadedImage> {
+export async function uploadImage(file: File): Promise<UploadedImage> {
   const error = validateImage(file)
   if (error) throw new Error(error)
 
   const supabase = createClient()
-  const path = buildImagePath(userId, file.name, Date.now())
+  const path = buildImagePath(file.name, Date.now())
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)

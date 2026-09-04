@@ -8,12 +8,11 @@ import { uploadImage, IMAGE_ACCEPT } from '@/lib/uploadImage'
 
 interface EditorProps {
   document: Document
-  userId: string
   onSave: (id: string, updates: { title: string; content: string; slug: string }) => Promise<void>
   onDelete: (id: string) => Promise<void>
 }
 
-export default function Editor({ document, userId, onSave, onDelete }: EditorProps) {
+export default function Editor({ document, onSave, onDelete }: EditorProps) {
   const [title, setTitle] = useState(document.title)
   const [content, setContent] = useState(document.content ?? '')
   const [slug, setSlug] = useState(document.slug ?? '')
@@ -74,7 +73,7 @@ export default function Editor({ document, userId, onSave, onDelete }: EditorPro
       const placeholder = `![업로드 중…](uploading-${Date.now()}-${Math.random().toString(36).slice(2)})`
       insertAtCursor(`${placeholder}\n`)
       try {
-        const { url, alt } = await uploadImage(file, userId)
+        const { url, alt } = await uploadImage(file)
         setContent(c => c.replace(placeholder, `![${alt}](${url})`))
       } catch (e) {
         setContent(c => c.replace(`${placeholder}\n`, '').replace(placeholder, ''))

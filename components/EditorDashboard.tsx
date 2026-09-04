@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Document } from '@/lib/types'
 import FileTree from '@/components/FileTree/FileTree'
@@ -10,12 +9,9 @@ import ImportDropzone from '@/components/ImportDropzone/ImportDropzone'
 
 interface EditorDashboardProps {
   initialDocuments: Document[]
-  userId: string
-  userEmail: string
 }
 
-export default function EditorDashboard({ initialDocuments, userId, userEmail }: EditorDashboardProps) {
-  const router = useRouter()
+export default function EditorDashboard({ initialDocuments }: EditorDashboardProps) {
   const [documents, setDocuments] = useState<Document[]>(initialDocuments)
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null)
 
@@ -25,10 +21,9 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
     const { data } = await supabase
       .from('documents')
       .select('*')
-      .eq('owner_id', userId)
       .order('sort_order')
     if (data) setDocuments(data as Document[])
-  }, [userId])
+  }, [])
 
   async function handleNewFolder(parentId: string | null) {
     const title = prompt('폴더 이름:')
@@ -40,7 +35,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
       content: null,
       slug: null,
       sort_order: 999,
-      owner_id: userId,
     })
     await refresh()
   }
@@ -55,7 +49,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
       content: '',
       slug,
       sort_order: 999,
-      owner_id: userId,
     }).select().single()
 
     await refresh()
@@ -90,11 +83,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
     await refresh()
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
-
   return (
     <div className="flex h-screen flex-col" style={{ background: 'var(--bg)' }}>
       {/* 헤더 */}
@@ -103,15 +91,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
         style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
       >
         <span className="font-semibold text-sm" style={{ color: 'var(--text)' }}>PaperFlow</span>
-        <span className="flex-1" />
-        <span className="text-xs mr-3" style={{ color: 'var(--text-secondary)' }}>{userEmail}</span>
-        <button
-          onClick={handleLogout}
-          className="text-xs px-2.5 py-1 rounded-md transition-colors"
-          style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
-        >
-          로그아웃
-        </button>
       </header>
 
       {/* 본문 */}
@@ -157,7 +136,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
           {/* .md 가져오기 */}
           <div className="border-t shrink-0" style={{ borderColor: 'var(--border)' }}>
             <ImportDropzone
-              userId={userId}
               parentId={null}
               onImported={refresh}
             />
@@ -170,7 +148,6 @@ export default function EditorDashboard({ initialDocuments, userId, userEmail }:
             <Editor
               key={selectedDoc.id}
               document={selectedDoc}
-              userId={userId}
               onSave={handleSave}
               onDelete={handleDelete}
             />

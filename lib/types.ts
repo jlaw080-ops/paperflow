@@ -12,7 +12,6 @@ export interface Document {
   slug: string | null
   format: DocumentFormat
   sort_order: number
-  owner_id: string
   created_at: string
   updated_at: string
 }

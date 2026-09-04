@@ -13,6 +13,7 @@
 ## 아키텍처 규칙
 - CRITICAL: 공개 보기 라우트(`/view/[slug]`)는 **읽기 전용**이다. 이 경로에 편집·삭제·쓰기 기능이나 소유자 전용 데이터를 절대 노출하지 말 것.
 - CRITICAL: 편집·삭제·쓰기 권한은 **Supabase RLS로 DB 차원에서 강제**한다. 앱 코드의 화면 숨김만으로 권한을 처리하지 말 것(우회 가능).
+  - 범위 변경 이력: 로그인(Supabase Auth)은 사용자 승인으로 제거됨(구현 완료, 2026-09-04). `/login`, `proxy.ts` 미들웨어, `owner_id` 기반 소유자 구분을 모두 삭제했다. `documents`·`document-images` 버킷 모두 RLS를 anon 전체 허용(`USING (true)`)으로 열어, **에디터(`/`)를 포함한 앱 전체가 URL을 아는 누구에게나 편집 가능**해졌다. 이 CRITICAL 규칙은 이제 "소유자만 허용"이 아니라 "RLS 정책은 항상 DB에 존재해야 하며 앱 코드로만 권한을 흉내내지 말 것"이라는 의미로 좁혀졌다. 되돌리려면 `supabase/migrations/003_remove_login.sql` 이전(001_initial.sql의 owner_all 정책)으로 복구할 것.
 - CRITICAL: **표준 마크다운(GFM, 표 포함)만** 렌더링한다. Obsidian 전용 문법(`[[위키링크]]`, `![[임베드]]`, 콜아웃)을 임의로 구현하지 말 것.
 - 예외: ` ```mermaid ` 코드블록은 다이어그램/플로우차트로 렌더한다(GitHub 방식). 클라이언트에서 SVG로 렌더하며 `securityLevel:'strict'` + raw HTML 비활성 유지(공개 뷰 XSS 방어). mermaid 외 다른 다이어그램 런타임은 임의 추가 금지.
 - 예외: `documents.format='html'` 문서는 HTML 원본을 렌더한다. **반드시 2중 방어 유지**: (1) `DOMPurify`로 sanitize(`<script>`·`on*`·`javascript:` 제거), (2) `sandbox="allow-same-origin"` iframe(스크립트 비활성)에 `srcDoc`로 렌더(`components/HtmlView`). `allow-scripts`를 절대 부여하지 말 것(공개 뷰 XSS). `format='markdown'` 문서는 기존대로 raw HTML 비활성 유지 — HTML 렌더는 오직 `format='html'` 경로에서만.
